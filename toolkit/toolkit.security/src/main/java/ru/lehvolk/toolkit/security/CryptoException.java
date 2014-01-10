@@ -1,4 +1,4 @@
-package ru.lehvolk.common.security;
+package ru.lehvolk.toolkit.security;
 
 /**
  * cryptographic processes base exception

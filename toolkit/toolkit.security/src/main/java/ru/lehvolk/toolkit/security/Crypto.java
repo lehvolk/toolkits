@@ -1,4 +1,4 @@
-package ru.lehvolk.common.security;
+package ru.lehvolk.toolkit.security;
 
 import java.io.File;
 import java.io.FileInputStream;
