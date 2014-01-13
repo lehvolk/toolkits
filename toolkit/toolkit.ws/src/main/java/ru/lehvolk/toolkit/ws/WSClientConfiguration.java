@@ -18,13 +18,13 @@ public class WSClientConfiguration implements Serializable {
 
 	private static final long serialVersionUID = -499127037976521464L;
 
-	@XmlElement(name = "connectionTimeout", required = false)
+	@XmlElement(name = "connection-timeout", required = false)
 	private Long connectionTimeout = 30 * 1000L; //30 seconds
 
 	@XmlElement(name = "endpoint-url", required = false)
 	private String operatorAddress;
 
-	@XmlElement(name = "PoolConfiguration", required = true)
+	@XmlElement(name = "pool", required = true)
 	private PortsPoolConfiguration poolConfig;
 
 	@XmlElement(name = "socket-read-timeout", required = false)
