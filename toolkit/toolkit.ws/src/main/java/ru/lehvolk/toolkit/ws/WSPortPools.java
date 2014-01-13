@@ -1,8 +1,9 @@
 package ru.lehvolk.toolkit.ws;
 
-import org.apache.commons.pool.PoolableObjectFactory;
 import org.apache.commons.pool.impl.GenericObjectPool;
+import org.apache.commons.pool.impl.GenericObjectPool.Config;
 
+import ru.lehvolk.toolkit.ws.PortsFactory.WSPortCreator;
 import ru.lehvolk.toolkit.ws.impl.CXFWSConfigurator;
 import ru.lehvolk.toolkit.ws.impl.JAXWSConfigurator;
 import ru.lehvolk.toolkit.ws.impl.SimpleWSConfigurator;
@@ -22,10 +23,12 @@ public class WSPortPools {
 
 		GenericObjectPool<T> delegate;
 		WSConfigurator configurator;
+		PortsFactory<T> factory;
 
-		WSPortsPoolImpl(GenericObjectPool<T> delegate, WSConfigurator configurator) {
+		WSPortsPoolImpl(GenericObjectPool<T> delegate, PortsFactory<T> factory, WSConfigurator configurator) {
 			this.configurator = configurator;
 			this.delegate = delegate;
+			this.factory = factory;
 		}
 
 		@Override
@@ -55,7 +58,6 @@ public class WSPortPools {
 			} catch (Exception e) {
 				throw new IllegalStateException("can't put object into WSPortPool", e);
 			}
-
 		}
 
 		@Override
@@ -71,86 +73,86 @@ public class WSPortPools {
 		public void clear() {
 			delegate.clear();
 		}
-	}
 
-	public static interface WSPortCreator<T> {
-
-		public T newPort();
+		public void refresh(WSClientConfiguration newConfig) {
+			synchronized (delegate) {
+				factory.init(newConfig);
+				delegate.clear();
+			}
+		}
 	}
 
 	public static class WSPortPoolBuilder<T> {
 
-		GenericObjectPool<T> pool;
 		WSConfigurator configurator;
 		GenericObjectPool.Config poolConfig;
-		PoolableObjectFactory<T> portFactory;
+		WSPortCreator<T> portCreator;
 		WSClientConfiguration configuration;
 
 		WSPortPoolBuilder() {
 		}
 
-		public WSPortPoolBuilder<T> usePool(GenericObjectPool<T> pool) {
-			this.pool = pool;
-			return this;
-		}
-
-		public WSPortPoolBuilder<T> usePoolConfig(GenericObjectPool.Config config) {
+		public WSPortPoolBuilder<T> poolConfig(GenericObjectPool.Config config) {
 			this.poolConfig = config;
 			return this;
 		}
 
-		public WSPortPoolBuilder<T> usePortFactory(PoolableObjectFactory<T> portFactory) {
-			this.portFactory = portFactory;
+		public WSPortPoolBuilder<T> creator(WSPortCreator<T> portCreator) {
+			this.portCreator = portCreator;
 			return this;
 		}
 
-		public WSPortPoolBuilder<T> useCreator(final WSPortCreator<T> portCreator) {
-			this.portFactory = new PoolableObjectFactory<T>() {
-
-				@Override
-				public void activateObject(T obj) throws Exception {
-				}
-
-				@Override
-				public void destroyObject(T obj) throws Exception {
-				}
-
-				@Override
-				public T makeObject() throws Exception {
-					return portCreator.newPort();
-				}
-
-				@Override
-				public boolean validateObject(T obj) {
-					return true;
-				}
-
-				@Override
-				public void passivateObject(T obj) throws Exception {
-				}
-			};
-			return this;
-		}
-
-		public WSPortPoolBuilder<T> useConfigurator(WSConfigurator configurator) {
+		public WSPortPoolBuilder<T> configurator(WSConfigurator configurator) {
 			this.configurator = configurator;
 			return this;
+		}
+
+		public WSPortPoolBuilder<T> clientConfig(WSClientConfiguration configuration) {
+			this.configuration = configuration;
+			return this;
+		}
+
+		public WSPortPool<T> create() {
+			if (configuration == null) {
+				throw new IllegalStateException("ws client configuration is null");
+			}
+			Config delegateConfig = null;
+			if (poolConfig != null) {
+				delegateConfig = poolConfig;
+			} else {
+				delegateConfig = new Config();
+				delegateConfig.maxActive = configuration.getPoolConfig().getPoolSize();
+			}
+			if (portCreator == null) {
+				throw new IllegalStateException("portCreator not specified");
+			}
+			PortsFactory<T> factory = new PortsFactory<>(portCreator, configurator, configuration);
+			GenericObjectPool<T> delegate = new GenericObjectPool<>(factory, delegateConfig);
+			return new WSPortsPoolImpl<>(delegate, factory, configurator);
 		}
 	}
 
 	public static <T> WSPortPoolBuilder<T> cxf() {
-		return new WSPortPoolBuilder<T>().useConfigurator(new CXFWSConfigurator());
+		return new WSPortPoolBuilder<T>().configurator(new CXFWSConfigurator());
 	}
 
 	public static <T> WSPortPoolBuilder<T> jaxws() {
-		return new WSPortPoolBuilder<T>().useConfigurator(new JAXWSConfigurator());
+		return new WSPortPoolBuilder<T>().configurator(new JAXWSConfigurator());
 	}
 
 	public static <T> WSPortPoolBuilder<T> simple() {
-		return new WSPortPoolBuilder<T>().useConfigurator(new SimpleWSConfigurator());
+		return new WSPortPoolBuilder<T>().configurator(new SimpleWSConfigurator());
 	}
 
 	public static <T> WSPortPoolBuilder<T> builder() {
 		return new WSPortPoolBuilder<T>();
+	}
+
+	public <T> boolean update(WSPortPool<T> pool, WSClientConfiguration newConfig) {
+		if (pool instanceof WSPortsPoolImpl) {
+			((WSPortsPoolImpl<?>) pool).refresh(newConfig);
+			return true;
+		}
+		return false;
 	}
 }

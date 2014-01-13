@@ -10,7 +10,7 @@ import javax.xml.bind.annotation.XmlRootElement;
 import ru.lehvolk.toolkit.security.http.SSLConfiguration;
 
 /**
- * Configuration of clients of OperatorAPI protocol
+ * Configuration of clients of SOAP protocol
  */
 @XmlRootElement(name = "ws-client")
 @XmlAccessorType(XmlAccessType.FIELD)
@@ -22,7 +22,7 @@ public class WSClientConfiguration implements Serializable {
 	private Long connectionTimeout = 30 * 1000L; //30 seconds
 
 	@XmlElement(name = "endpoint-url", required = false)
-	private String operatorAddress;
+	private String endpointURL;
 
 	@XmlElement(name = "pool", required = true)
 	private PortsPoolConfiguration poolConfig;
@@ -44,10 +44,10 @@ public class WSClientConfiguration implements Serializable {
 	}
 
 	/**
-	 * @return the operatorAddress
+	 * @return the endpointURL
 	 */
-	public String getOperatorAddress() {
-		return operatorAddress;
+	public String getEndpointURL() {
+		return endpointURL;
 	}
 
 	/**
@@ -86,10 +86,10 @@ public class WSClientConfiguration implements Serializable {
 	}
 
 	/**
-	 * @param operatorAddress the operatorAddress to set
+	 * @param endpointURL the endpointURL to set
 	 */
-	public void setOperatorAddress(String operatorAddress) {
-		this.operatorAddress = operatorAddress;
+	public void setEndpointURL(String endpointURL) {
+		this.endpointURL = endpointURL;
 	}
 
 	/**
